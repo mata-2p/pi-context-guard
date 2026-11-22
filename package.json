@@ -1,0 +1,45 @@
+{
+  "name": "pi-context-guard",
+  "version": "0.1.0",
+  "description": "Pi extensions: compact long sessions at a model-independent threshold after asking the model to save a session summary (needs an active mem_session_summary tool, such as gentle-engram's), plus a standalone observer that records context metrics to tune the threshold.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Matias Barria",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mata-2p/pi-context-guard.git"
+  },
+  "homepage": "https://github.com/mata-2p/pi-context-guard#readme",
+  "bugs": {
+    "url": "https://github.com/mata-2p/pi-context-guard/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "compaction",
+    "context-window",
+    "engram"
+  ],
+  "files": [
+    "extensions/*/index.ts",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/context-guard/index.ts",
+      "./extensions/context-observer/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test extensions/*/test/*.test.mjs test-support/*.test.mjs"
+  }
+}
