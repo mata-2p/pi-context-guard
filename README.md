@@ -45,6 +45,12 @@ Pi reports a UI (`ctx.hasUI`) in TUI and RPC sessions, not in print (`-p`) or JS
 
 ## Install
 
+From npm:
+
+```bash
+pi install npm:pi-context-guard
+```
+
 From git:
 
 ```bash
