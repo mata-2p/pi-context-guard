@@ -13,6 +13,16 @@
   "bugs": {
     "url": "https://github.com/mata-2p/pi-context-guard/issues"
   },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/mata-2p"
+    },
+    {
+      "type": "ko-fi",
+      "url": "https://ko-fi.com/matiasjbarriah"
+    }
+  ],
   "keywords": [
     "pi-package",
     "pi-extension",
