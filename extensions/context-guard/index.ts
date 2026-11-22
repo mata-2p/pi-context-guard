@@ -62,6 +62,51 @@ export function computeThreshold(window: number, keepRecentTokens: number, reser
   return threshold >= window - reserveTokens ? null : threshold;
 }
 
+function contentChars(content: any): number {
+  if (typeof content === "string") return content.length;
+  if (!Array.isArray(content)) return 0;
+  let total = 0;
+  for (const block of content) {
+    if (block?.type === "text") total += String(block.text ?? "").length;
+    else if (block?.type === "thinking") total += String(block.thinking ?? "").length;
+    else if (block?.type === "toolCall") total += String(block.name ?? "").length + JSON.stringify(block.arguments ?? {}).length;
+    else if (block?.type === "image") total += 4800;
+  }
+  return total;
+}
+
+/** Estimated tokens Pi could summarize for one session entry (about 4 characters per token, like Pi's estimateTokens). */
+function compactableTokens(entry: any): number {
+  if (entry?.type === "message") {
+    if (entry.message?.role === "system") return 0; // Pi never summarizes system messages
+    return Math.ceil(contentChars(entry.message?.content) / 4);
+  }
+  if (entry?.type === "custom_message") return Math.ceil(contentChars(entry.content) / 4);
+  return 0;
+}
+
+/**
+ * Whether Pi could compact this branch. Pi keeps the newest keepRecentTokens
+ * of conversation since the last compaction and summarizes what comes before
+ * them; when only the first message (or nothing) would be left to summarize,
+ * Pi throws "Nothing to compact (session too small)". The context can be over
+ * the threshold because of the system prompt alone, so the guard checks this
+ * before asking the model to save.
+ */
+export function canCompact(branch: any[], keepRecentTokens: number): boolean {
+  let start = 0;
+  for (let i = branch.length - 1; i >= 0; i--) {
+    if (branch[i]?.type === "compaction") {
+      start = i + 1;
+      break;
+    }
+  }
+  const sizes = branch.slice(start).map(compactableTokens).filter((tokens) => tokens > 0);
+  if (sizes.length < 2) return false;
+  const afterFirst = sizes.slice(1).reduce((sum, tokens) => sum + tokens, 0);
+  return afterFirst >= keepRecentTokens;
+}
+
 /** Resolves keepRecentTokens and reserveTokens: model override, then setting, then default. */
 export function compactionSettings(settings: any, model: string): { keepRecentTokens: number; reserveTokens: number } {
   const compaction = settings?.compaction ?? {};
@@ -270,6 +315,8 @@ export default function contextGuard(pi: ExtensionAPI, deps: GuardDeps = {}) {
     if (threshold === null || tokens < threshold) return;
     const { keepRecentTokens } = compactionSettings(pi.getSettings?.(), model);
     if (baseline !== null && tokens < baseline + keepRecentTokens) return;
+    const branch = ctx.sessionManager?.getBranch?.();
+    if (Array.isArray(branch) && !canCompact(branch, keepRecentTokens)) return;
 
     phase = "save_requested";
     saved = false;

@@ -85,6 +85,7 @@ export function createFakeCtx({
   usage = { tokens: 1000, contextWindow: 200000, percent: 0.5 },
   idle = true,
   pendingMessages = false,
+  branch,
 } = {}) {
   const notifications = [];
   const statuses = new Map();
@@ -109,6 +110,7 @@ export function createFakeCtx({
     },
     sessionManager: {
       getSessionId: () => sessionId,
+      ...(branch === undefined ? {} : { getBranch: () => branch }),
     },
     getContextUsage() {
       return ctx.usage ?? undefined;

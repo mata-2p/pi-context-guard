@@ -31,7 +31,7 @@ When a run ends above the threshold:
 
 After a compaction, the first token reading is a baseline. If the compacted context is still near the threshold, the guard waits until it grows by `keepRecentTokens` before compacting again. After a failed compaction it waits 3 settles before retrying.
 
-The guard skips a settle when the usage is unknown, the run was aborted, or user messages are queued. It asks for a save and compacts only in sessions with a UI where `mem_session_summary` is an active tool. The fallback needs a UI session but not the tool.
+The guard skips a settle when the usage is unknown, the run was aborted, or user messages are queued. It also skips while Pi could not compact yet: Pi keeps the newest `keepRecentTokens` of conversation and refuses with "Nothing to compact" when nothing besides the first message would be left to summarize. This happens when the system prompt alone fills most of the threshold, so the guard waits until the conversation since the last compaction (without system messages, at about 4 characters per token) exceeds `keepRecentTokens` after its first message. It asks for a save and compacts only in sessions with a UI where `mem_session_summary` is an active tool. The fallback needs a UI session but not the tool.
 
 Pi reports a UI (`ctx.hasUI`) in TUI and RPC sessions, not in print (`-p`) or JSON mode. In print and JSON mode neither extension does anything.
 
