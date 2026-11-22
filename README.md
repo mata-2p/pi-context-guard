@@ -1,5 +1,7 @@
 # pi-context-guard
 
+[![npm](https://img.shields.io/npm/v/pi-context-guard)](https://www.npmjs.com/package/pi-context-guard) [![GitHub Sponsors](https://img.shields.io/github/sponsors/mata-2p)](https://github.com/sponsors/mata-2p) [![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/matiasjbarriah) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Two [Pi](https://pi.dev) extensions for long coding sessions:
 
 - **`context-guard`** compacts the session at a model-independent threshold, and asks the model to save a structured session summary to [Engram](https://github.com/Gentleman-Programming/engram) first.
@@ -134,6 +136,10 @@ npm test
 ```
 
 The tests drive the handlers through a small fake of the Pi extension API in `test-support/fake-pi.mjs`.
+
+## Sponsoring
+
+pi-context-guard is free. If it helps you, you can support it with monthly sponsorship on [GitHub Sponsors](https://github.com/sponsors/mata-2p) or a one-off tip on [Ko-fi](https://ko-fi.com/matiasjbarriah).
 
 ## License
 
