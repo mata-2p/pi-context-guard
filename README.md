@@ -9,9 +9,16 @@ Without an active `mem_session_summary` tool (for example from [gentle-engram](h
 
 Community package, not affiliated with Gentleman Programming. Compatible with Gentle Shell and gentle-engram.
 
-## Why
+## Why compact earlier
 
-By default Pi compacts only when free tokens run out (`contextTokens > contextWindow - reserveTokens`). With a 1M window that is around 984K tokens. Research on long contexts shows models degrade with the number of input tokens, well before the window is full. See [docs/threshold.md](docs/threshold.md) for the sources.
+By default Pi compacts only when free tokens run out (`contextTokens > contextWindow - reserveTokens`, with `reserveTokens` 16384). With a 1M window that is around 984K tokens, long after the model started losing precision.
+
+- **A bigger window does not mean the same quality across it.** Degradation depends on how many tokens are in context, not on the share of the window in use. Chroma measured 18 models and all of them got worse as the input grew, even on simple tasks ([Context Rot](https://www.trychroma.com/research/context-rot)).
+- **The drop starts early.** NoLiMa found strong drops from tens of thousands of tokens on models that advertise windows from 128K to 1M ([arXiv:2502.05167](https://arxiv.org/abs/2502.05167)).
+- **150K is a known default.** The Anthropic API compacts at 150K input tokens by default ([compaction threshold](https://platform.claude.com/docs/en/build-with-claude/compaction-threshold)). The guard uses the same cap.
+- **Save before you compact.** Every compaction loses detail. When the model writes its own structured summary while it still sees everything, and that summary lives in Engram, a later session can search it and bring back only what matters.
+
+The costs, honestly: one extra model call per compaction, a lost prompt cache, and chained summaries that can accumulate errors. The defaults are a starting point, which is why `context-observer` exists. See [docs/threshold.md](docs/threshold.md) for the reasoning and the sources.
 
 ## How it works
 
@@ -22,6 +29,17 @@ threshold = max(min(ratio × window, capTokens), floorMultiplier × keepRecentTo
 ```
 
 The defaults are `ratio` 0.5, `capTokens` 150000 and `floorMultiplier` 2. The percentage rules on small windows, the cap rules on large ones. When the threshold does not fit below `window - reserveTokens`, the guard does nothing and Pi's own compaction applies.
+
+With Pi's defaults (`keepRecentTokens` 20000, `reserveTokens` 16384):
+
+| Window | Guard compacts at | Pi alone compacts at |
+| --- | --- | --- |
+| 1M | 150K | ~984K |
+| 400K | 150K | ~384K |
+| 200K | 100K | ~184K |
+| 128K | 64K | ~112K |
+| 64K | 40K (floor) | ~48K |
+| 50K or less | does nothing | Pi's own threshold |
 
 When a run ends above the threshold:
 
