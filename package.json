@@ -1,6 +1,6 @@
 {
   "name": "pi-context-guard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi extensions: compact long sessions at a model-independent threshold after asking the model to save a session summary (needs an active mem_session_summary tool, such as gentle-engram's), plus a standalone observer that records context metrics to tune the threshold.",
   "type": "module",
   "license": "MIT",
