@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `context-observer`: records from Gentle Shell subagent sessions (`GENTLE_PI_AGENTS_CHILD=1`) carry `"child": true`, and `/context-report` shows them apart from primary sessions on the same model.
+
 ## [0.1.0] - 2026-11-22
 
 ### Added
