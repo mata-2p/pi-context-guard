@@ -112,9 +112,11 @@ To turn the guard off without uninstalling it, set `CONTEXT_GUARD_DISABLED=1` or
 
 It never records prompts, replies, tool arguments or file contents.
 
+In a Gentle Shell subagent (a process with `GENTLE_PI_AGENTS_CHILD=1`), every record also carries `"child": true`. Records from primary sessions have no `child` field.
+
 It adds two commands:
 
-- `/context-report` summarizes the metrics per model.
+- `/context-report` summarizes the metrics per model, with subagent sessions in their own group (`<model>, subagents`).
 - `/context-flag` records the moment you noticed the model lost track, with the current context usage.
 
 The defaults are a starting point. If your flags cluster at some token count, or Engram searches after compaction often come back empty, adjust `ratio` and `capTokens`.

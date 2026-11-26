@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1] - 2026-11-26
+
+### Added
+
+- `context-observer`: records from Gentle Shell subagent sessions (`GENTLE_PI_AGENTS_CHILD=1`) carry `"child": true`, and `/context-report` shows them apart from primary sessions on the same model.
+- README: why the guard compacts earlier, with a threshold table per window size.
+- `funding` field in `package.json`, and README badges and sponsoring section.
+
 ## [0.1.0] - 2026-11-22
 
 ### Added

@@ -153,6 +153,69 @@ test("guard events on the event bus are recorded with whitelisted fields only", 
   }
 });
 
+async function withChildEnv(value, fn) {
+  const previous = process.env.GENTLE_PI_AGENTS_CHILD;
+  if (value === undefined) delete process.env.GENTLE_PI_AGENTS_CHILD;
+  else process.env.GENTLE_PI_AGENTS_CHILD = value;
+  try {
+    return await fn();
+  } finally {
+    if (previous === undefined) delete process.env.GENTLE_PI_AGENTS_CHILD;
+    else process.env.GENTLE_PI_AGENTS_CHILD = previous;
+  }
+}
+
+test("records from a Gentle Shell subagent session carry child: true", async () => {
+  await withChildEnv("1", async () => {
+    const s = setup();
+    try {
+      await s.fire("session_start", { reason: "startup" }, s.ctx);
+      await s.fire("turn_end", { turnIndex: 0 }, s.ctx);
+      await compaction(s);
+      s.pi.events.emit("context-guard", { event: "fallback_saved", reason: "threshold" });
+      await s.runCommand("context-flag", "", s.ctx);
+      const records = s.records();
+      assert.deepEqual(records.map((r) => r.kind), ["turn", "compaction", "guard", "flag"]);
+      for (const record of records) assert.equal(record.child, true, record.kind);
+    } finally {
+      s.cleanup();
+    }
+  });
+});
+
+test("records from a primary session have no child field", async () => {
+  for (const value of [undefined, "", "0", "true"]) {
+    await withChildEnv(value, async () => {
+      const s = setup();
+      try {
+        await s.fire("turn_end", { turnIndex: 0 }, s.ctx);
+        await compaction(s);
+        for (const record of s.records()) assert.equal("child" in record, false, `${value} ${record.kind}`);
+      } finally {
+        s.cleanup();
+      }
+    });
+  }
+});
+
+test("summarize and /context-report split subagent sessions from primary ones", async () => {
+  const model = "m/x";
+  const records = [
+    { kind: "turn", model, session: "p1", tokens: 1000, window: 100000 },
+    { kind: "turn", model, session: "p1", tokens: 3000, window: 100000 },
+    { kind: "turn", model, session: "c1", child: true, tokens: 90000, window: 100000 },
+    { kind: "compaction", model, session: "c1", child: true, ok: true, reason: "threshold", tokensBefore: 95000, durationMs: 1000 },
+  ];
+  const summaries = summarize(records);
+  assert.deepEqual(summaries.map((s) => [s.model, s.subagent, s.sessions, s.turns, s.maxTokens, s.compactions.total]), [
+    [model, false, 1, 2, 3000, 0],
+    [model, true, 1, 1, 90000, 1],
+  ]);
+  const report = formatReport(summaries);
+  assert.match(report, /^m\/x \(sessions: 1, turns: 2,/m);
+  assert.match(report, /^m\/x, subagents \(sessions: 1, turns: 1,/m);
+});
+
 test("sessions without UI (print and json modes) record nothing", async () => {
   const s = setup({ hasUI: false });
   try {

@@ -27,6 +27,11 @@ export function metricsFilePath(): string {
   return join(agentDir, "context-metrics", "metrics.jsonl");
 }
 
+/** True in a Gentle Shell subagent process (gentle-pi sets GENTLE_PI_AGENTS_CHILD=1). */
+export function isChildSession(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.GENTLE_PI_AGENTS_CHILD === "1";
+}
+
 /** Strips runtime prefixes such as "mcp__custom-tools__" from tool names. */
 export function baseToolName(name: string): string {
   const index = name.lastIndexOf("__");
@@ -69,14 +74,18 @@ function per100(count: number, turns: number): string {
 }
 
 export function summarize(records: any[]): any[] {
-  const byModel = new Map<string, any[]>();
+  // One group per model and session kind, so subagent sessions do not blur
+  // the numbers of primary sessions on the same model.
+  const groups = new Map<string, { model: string; subagent: boolean; items: any[] }>();
   for (const record of records) {
-    const key = record.model ?? "unknown";
-    if (!byModel.has(key)) byModel.set(key, []);
-    byModel.get(key)!.push(record);
+    const model = record.model ?? "unknown";
+    const subagent = record.child === true;
+    const key = JSON.stringify([model, subagent]);
+    if (!groups.has(key)) groups.set(key, { model, subagent, items: [] });
+    groups.get(key)!.items.push(record);
   }
 
-  return [...byModel.entries()].map(([model, items]) => {
+  return [...groups.values()].map(({ model, subagent, items }) => {
     const turns = items.filter((r) => r.kind === "turn");
     const tokens = turns.map((r) => r.tokens).filter((t) => typeof t === "number");
     const compactions = items.filter((r) => r.kind === "compaction");
@@ -90,6 +99,7 @@ export function summarize(records: any[]): any[] {
 
     return {
       model,
+      subagent,
       sessions: new Set(items.map((r) => r.session).filter(Boolean)).size,
       turns: turns.length,
       turnsAfterCompaction: turns.filter((r) => isAfterCompaction(r.turnsSinceCompaction)).length,
@@ -128,7 +138,7 @@ export function formatReport(summaries: any[]): string {
     const guard = Object.entries(s.guard).map(([k, v]) => `${k}=${v}`).join(", ") || "none";
     lines.push(
       "",
-      `${s.model} (sessions: ${s.sessions}, turns: ${s.turns}, window: ${s.window ?? "?"})`,
+      `${s.model}${s.subagent ? ", subagents" : ""} (sessions: ${s.sessions}, turns: ${s.turns}, window: ${s.window ?? "?"})`,
       `  Tokens per turn: median ${s.medianTokens ?? "?"}, max ${s.maxTokens ?? "?"}`,
       `  Compactions: ${s.compactions.total} (failed ${s.compactions.failed}; ${reasons}); median tokens before ${s.compactions.medianTokensBefore ?? "?"}, median duration ${s.compactions.medianDurationMs ?? "?"} ms`,
       `  Guard: ${guard}`,
@@ -156,6 +166,7 @@ export function readRecords(file: string): any[] {
 
 export default function contextObserver(pi: ExtensionAPI) {
   const file = metricsFilePath();
+  const child = isChildSession();
   let lastCtx: any;
   let sessionId: string | null = null;
   let writeFailed = false;
@@ -183,7 +194,7 @@ export default function contextObserver(pi: ExtensionAPI) {
   }
 
   function write(record: Record<string, unknown>) {
-    const line = { ts: new Date().toISOString(), session: sessionId, ...record };
+    const line = { ts: new Date().toISOString(), session: sessionId, ...(child ? { child: true } : {}), ...record };
     try {
       mkdirSync(dirname(file), { recursive: true });
       appendFileSync(file, JSON.stringify(line) + "\n");
